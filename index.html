@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="description" content="4chan Board List with CORS workaround" />
+		<title>4chan Board List</title>
+		<link rel="stylesheet" href="css/styles.css" />
+	</head>
+	<body>
+		<!-- Warning Pop-up -->
+		<div id="warning-popup" class="popup">
+			<div class="popup-content">
+				<h2>Warning: Adult Content</h2>
+				<p>This website contains adult content. Are you sure you want to proceed?</p>
+				<button id="accept-adult-content">Accept</button>
+				<button id="decline-adult-content">Decline</button>
+			</div>
+		</div>
+
+		<!-- Header Section -->
+		<header>
+			<div class="container">
+				<div class="navbar">
+					<img src="images/icon-light.png" id="site-logo" alt="4chan Logo" />
+					<h1>4chan Board List</h1>
+					<div class="theme-toggle">
+						<button id="toggle-theme">🌙 Dark Mode</button>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- Search and Filter Section -->
+		<section id="search-filter">
+			<div class="container">
+				<input type="text" id="search-board" placeholder="Search for boards..." />
+				<div class="filters">
+					<label for="filter-archived">Show Archived:</label>
+					<input type="checkbox" id="filter-archived" />
+					<label for="filter-adult-content">Filter Adult Content:</label>
+					<input type="checkbox" id="filter-adult-content" />
+				</div>
+			</div>
+		</section>
+
+		<!-- Boards List Section -->
+		<section id="boards-list-section" class="boards-list-section">
+			<div class="container">
+				<h2>List of Boards</h2>
+				<div id="boards-list">
+					<!-- Board info will be populated here -->
+				</div>
+				<div id="result-section">
+					<!-- Error or loading messages will appear here -->
+				</div>
+			</div>
+		</section>
+
+		<footer>
+			<p>&copy; 2025 4chan Board List</p>
+		</footer>
+
+		<script src="js/main.js"></script>
+	</body>
+</html>
