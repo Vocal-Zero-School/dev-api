@@ -18,6 +18,15 @@
 			</div>
 		</div>
 
+		<!-- Entry Warning Pop-up -->
+		<div id="entry-warning-popup" class="popup">
+			<div class="popup-content">
+				<h2>Welcome</h2>
+				<p>Please note that this website contains sensitive content. Click "Okay" to proceed.</p>
+				<button id="entry-warning-okay">Okay</button>
+			</div>
+		</div>
+
 		<!-- Header Section -->
 		<header>
 			<div class="container">
@@ -63,6 +72,18 @@
 
 		<script src="js/main.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-	</head>
+		<script>
+			// Show entry warning popup on page load
+			window.addEventListener("load", () => {
+				const entryWarningPopup = document.getElementById("entry-warning-popup");
+				const okayButton = document.getElementById("entry-warning-okay");
+
+				entryWarningPopup.style.display = "block";
+
+				okayButton.addEventListener("click", () => {
+					entryWarningPopup.style.display = "none";
+				});
+			});
+		</script>
 	</body>
 </html>
