@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
 	// Cache DOM elements
 	const boardsContainer = document.getElementById("boards-list");
 	const searchInput = document.getElementById("search-board");
@@ -6,22 +6,46 @@ document.addEventListener("DOMContentLoaded", function () {
 	const adultContentFilter = document.getElementById("filter-adult-content");
 	const themeToggleButton = document.getElementById("toggle-theme");
 
-	// Fetch boards data from the local server (using the '/api/boards' endpoint)
-	fetch("/api/boards")
-		.then((response) => {
+	// Function to get the proxy URL dynamically
+	async function getProxyUrl() {
+		try {
+			const response = await fetch("https://corsproxy.io/?url=https://example.com");
+			if (response.ok) {
+				return "https://cors-anywhere.herokuapp.com/";
+			} else {
+				throw new Error("Failed to retrieve proxy access");
+			}
+		} catch (error) {
+			console.error("Error fetching proxy:", error);
+			displayErrorMessage(error);
+			return null;
+		}
+	}
+
+	// Function to fetch board data using the proxy
+	async function fetchBoards() {
+		const proxyUrl = await getProxyUrl();
+		if (!proxyUrl) {
+			displayErrorMessage(new Error("CORS proxy unavailable"));
+			return;
+		}
+
+		try {
+			const response = await fetch(`${proxyUrl}https://a.4cdn.org/boards.json`);
 			if (!response.ok) {
 				throw new Error("Failed to fetch data. Status: " + response.status);
 			}
-			return response.json();
-		})
-		.then((data) => {
+			const data = await response.json();
 			console.log(data); // Log the data to make sure it's correct
 			displayBoards(data);
-		})
-		.catch((error) => {
+		} catch (error) {
 			console.error("Error fetching board list:", error);
 			displayErrorMessage(error);
-		});
+		}
+	}
+
+	// Fetch the board data
+	fetchBoards();
 
 	// Function to display the list of boards
 	function displayBoards(data) {
@@ -81,6 +105,12 @@ document.addEventListener("DOMContentLoaded", function () {
 		document.body.classList.toggle("dark-mode");
 		const isDarkMode = document.body.classList.contains("dark-mode");
 		themeToggleButton.textContent = isDarkMode ? "🌞 Light Mode" : "🌙 Dark Mode";
+
+		// Change the icon/logo based on the mode
+		const logoIcon = document.getElementById("site-logo");
+		if (logoIcon) {
+			logoIcon.src = isDarkMode ? "../images/icon-dark.png" : "../images/icon-light.png";
+		}
 	});
 
 	// Function to display an error message
