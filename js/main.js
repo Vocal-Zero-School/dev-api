@@ -1,105 +1,113 @@
 document.addEventListener("DOMContentLoaded", async function () {
-	// Cache DOM elements
 	const boardsContainer = document.getElementById("boards-list");
-	const searchInput = document.getElementById("search-board");
 	const archivedFilter = document.getElementById("filter-archived");
 	const adultContentFilter = document.getElementById("filter-adult-content");
 	const themeToggleButton = document.getElementById("toggle-theme");
 
-	// Add a canvas element for the chart above the board list
 	const chartContainer = document.createElement("div");
 	chartContainer.id = "chart-container";
 	chartContainer.innerHTML = `<canvas id="boards-chart"></canvas>`;
 	boardsContainer.parentNode.insertBefore(chartContainer, boardsContainer);
 
-	// Initialize Chart.js
 	let boardsChart = null;
+	let fallbackData = null; // Save last good data
 
-	// Function to get the proxy URL dynamically
-	async function getProxyUrl() {
-		try {
-			const response = await fetch("https://corsproxy.io/?url=https://example.com");
-			if (response.ok) {
-				return "https://cors-anywhere.herokuapp.com/";
-			} else {
-				throw new Error("Failed to retrieve proxy access");
-			}
-		} catch (error) {
-			console.error("Error fetching proxy:", error);
-			displayErrorMessage(error);
-			return null;
-		}
+	// Apply saved theme
+	const savedTheme = localStorage.getItem("theme") || "light";
+	applyTheme(savedTheme);
+
+	// Event: Toggle theme
+	if (themeToggleButton) {
+		themeToggleButton.addEventListener("click", () => {
+			const isDark = document.body.classList.toggle("dark-mode");
+			applyTheme(isDark ? "dark" : "light");
+		});
 	}
 
-	// Function to fetch board data using the proxy
-	async function fetchBoards() {
-		const proxyUrl = await getProxyUrl();
-		if (!proxyUrl) {
-			displayErrorMessage(new Error("CORS proxy unavailable"));
-			return;
+	function applyTheme(theme) {
+		document.body.classList.toggle("dark-mode", theme === "dark");
+		if (themeToggleButton) {
+			themeToggleButton.textContent = theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 		}
+		localStorage.setItem("theme", theme);
+	}
 
+	// Event: Filters
+	[archivedFilter, adultContentFilter].forEach((filter) =>
+		filter.addEventListener("change", () => {
+			if (fallbackData) displayBoards(fallbackData);
+		})
+	);
+
+	// Get proxy (only one now)
+	async function getProxyUrl() {
+		return "https://cors-anywhere.herokuapp.com/";
+	}
+
+	// Fetch board data
+	async function fetchBoards() {
 		try {
+			const proxyUrl = await getProxyUrl();
 			const response = await fetch(`${proxyUrl}https://a.4cdn.org/boards.json`);
-			if (!response.ok) {
-				throw new Error("Failed to fetch data. Status: " + response.status);
-			}
-			const data = await response.json();
-			console.log(data); // Log the data to make sure it's correct
+
+			if (!response.ok) throw new Error(`Fetch failed (${response.status})`);
+
+			const rawText = await response.text();
+			const data = JSON.parse(rawText);
+
+			if (!data || !Array.isArray(data.boards)) throw new Error("Invalid data format: 'boards' missing or malformed");
+
+			// Save fallback
+			fallbackData = data;
+
 			displayBoards(data);
 			updateChart(data);
 		} catch (error) {
-			console.error("Error fetching board list:", error);
-			displayErrorMessage(error);
+			console.error("🚨 Fetch error:", error.message);
+
+			if (fallbackData) {
+				displayBoards(fallbackData);
+				updateChart(fallbackData);
+				displayErrorMessage(new Error("Loaded last known good data. Live fetch failed."));
+			} else {
+				displayErrorMessage(error);
+			}
 		}
 	}
 
-	// Fetch the board data
-	fetchBoards();
-
-	// Function to display the list of boards
 	function displayBoards(data) {
-		boardsContainer.innerHTML = ""; // Clear previous content
+		boardsContainer.innerHTML = "";
 
-		// Apply filters to boards
 		const filteredBoards = data.boards.filter((board) => {
-			// Apply filter for archived boards
-			if (archivedFilter.checked && board.is_archived !== true) {
-				return false;
-			}
-
-			// Apply filter for adult content
-			if (adultContentFilter.checked && board.ws_board !== 1) {
-				return false;
-			}
-
+			if (archivedFilter.checked && !board.is_archived) return false;
+			if (adultContentFilter.checked && (board.ws_board === undefined || board.ws_board === 0)) return false;
 			return true;
 		});
 
-		// Display the boards in the container
+		if (filteredBoards.length === 0) {
+			boardsContainer.innerHTML = "<p>No boards match the selected filters.</p>";
+			return;
+		}
+
 		filteredBoards.forEach((board) => {
 			const boardElement = document.createElement("div");
 			boardElement.classList.add("board-item");
-
-			// Display basic board info
 			boardElement.innerHTML = `
-			  <h3>${board.title}</h3>
-			  <p>Board: /${board.board}</p>
-			  <p>Threads per page: ${board.per_page}</p>
-			  <p>Pages: ${board.pages}</p>
-			  <p>Max file size: ${board.max_filesize / 1024} MB</p>
-			  <p>Max WebM size: ${board.max_webm_filesize / 1024} MB</p>
+				<h3>${board.title}</h3>
+				<p>Board: /${board.board}</p>
+				<p>Threads per page: ${board.per_page}</p>
+				<p>Pages: ${board.pages}</p>
+				<p>Max file size: ${(board.max_filesize / 1024).toFixed(2)} MB</p>
+				<p>Max WebM size: ${(board.max_webm_filesize / 1024).toFixed(2)} MB</p>
 			`;
-
 			boardsContainer.appendChild(boardElement);
 		});
 	}
 
-	// Function to update the chart
 	function updateChart(data) {
-		const labels = data.boards.map((board) => board.title);
-		const threadsPerPage = data.boards.map((board) => board.per_page);
-		const pages = data.boards.map((board) => board.pages);
+		const labels = data.boards.map((b) => b.title);
+		const threadsPerPage = data.boards.map((b) => b.per_page);
+		const pages = data.boards.map((b) => b.pages);
 
 		const chartData = {
 			labels: labels,
@@ -125,18 +133,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 			responsive: true,
 			maintainAspectRatio: false,
 			scales: {
-				y: {
-					beginAtZero: true,
-				},
+				y: { beginAtZero: true },
 			},
 		};
 
-		// Destroy the previous chart instance if it exists
-		if (boardsChart) {
-			boardsChart.destroy();
-		}
-
-		// Create a new chart instance
+		if (boardsChart) boardsChart.destroy();
 		const ctx = document.getElementById("boards-chart").getContext("2d");
 		boardsChart = new Chart(ctx, {
 			type: "bar",
@@ -145,37 +146,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 		});
 	}
 
-	// Function to filter boards based on search input
-	searchInput.addEventListener("input", () => {
-		const searchQuery = searchInput.value.toLowerCase();
-		const boards = document.querySelectorAll(".board-item");
-		boards.forEach((board) => {
-			const boardTitle = board.querySelector("h3").textContent.toLowerCase();
-			// Show or hide the board based on search query
-			if (boardTitle.includes(searchQuery)) {
-				board.style.display = "";
-			} else {
-				board.style.display = "none";
-			}
-		});
-	});
-
-	// Function to toggle dark mode
-	themeToggleButton.addEventListener("click", () => {
-		document.body.classList.toggle("dark-mode");
-		const isDarkMode = document.body.classList.contains("dark-mode");
-		themeToggleButton.textContent = isDarkMode ? "🌞 Light Mode" : "🌙 Dark Mode";
-
-		// Change the icon/logo based on the mode
-		const logoIcon = document.getElementById("site-logo");
-		if (logoIcon) {
-			logoIcon.src = isDarkMode ? "../images/icon-dark.png" : "../images/icon-light.png";
-		}
-	});
-
-	// Function to display an error message
 	function displayErrorMessage(error) {
 		const resultDiv = document.getElementById("result-section");
-		resultDiv.innerHTML = `<p class="error-message">Error: ${error.message}</p>`;
+		resultDiv.innerHTML = `<p class="error-message">⚠️ ${error.message}</p>`;
 	}
+
+	// Start
+	fetchBoards();
 });
