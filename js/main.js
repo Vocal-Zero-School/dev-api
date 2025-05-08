@@ -3,20 +3,28 @@ document.addEventListener("DOMContentLoaded", async function () {
 	const archivedFilter = document.getElementById("filter-archived");
 	const adultContentFilter = document.getElementById("filter-adult-content");
 	const themeToggleButton = document.getElementById("toggle-theme");
+	const logo = document.getElementById("site-logo");
+	const searchInput = document.getElementById("search-board");
+	const resultSection = document.getElementById("result-section");
 
+	// Create chart container
 	const chartContainer = document.createElement("div");
 	chartContainer.id = "chart-container";
 	chartContainer.innerHTML = `<canvas id="boards-chart"></canvas>`;
 	boardsContainer.parentNode.insertBefore(chartContainer, boardsContainer);
 
 	let boardsChart = null;
-	let fallbackData = null; // Save last good data
+	let fallbackData = null;
 
-	// Apply saved theme
+	// Status Banner
+	const statusBanner = document.getElementById("status-banner");
+	const statusIcon = document.getElementById("status-icon");
+	const statusText = document.getElementById("status-text");
+
+	// Theme Handling
 	const savedTheme = localStorage.getItem("theme") || "light";
 	applyTheme(savedTheme);
 
-	// Event: Toggle theme
 	if (themeToggleButton) {
 		themeToggleButton.addEventListener("click", () => {
 			const isDark = document.body.classList.toggle("dark-mode");
@@ -29,70 +37,97 @@ document.addEventListener("DOMContentLoaded", async function () {
 		if (themeToggleButton) {
 			themeToggleButton.textContent = theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 		}
+		if (logo) {
+			logo.src = theme === "dark" ? "images/icon-dark.png" : "images/icon-light.png";
+		}
 		localStorage.setItem("theme", theme);
 	}
 
-	// Event: Filters
-	[archivedFilter, adultContentFilter].forEach((filter) =>
-		filter.addEventListener("change", () => {
-			if (fallbackData) displayBoards(fallbackData);
-		})
-	);
+	// Filter change
+	[archivedFilter, adultContentFilter].forEach((filter) => {
+		if (filter) {
+			filter.addEventListener("change", () => {
+				if (fallbackData) displayBoards(fallbackData);
+			});
+		}
+	});
 
-	// Get proxy (only one now)
-	async function getProxyUrl() {
-		return "https://cors-anywhere.herokuapp.com/";
+	// Search
+	if (searchInput) {
+		searchInput.addEventListener("input", () => {
+			if (fallbackData) displayBoards(fallbackData);
+		});
 	}
 
-	// Fetch board data
+	async function getProxyUrl() {
+		return "https://cors-anywhere.herokuapp.com/corsdemo/"; // Correct proxy URL
+	}
+
 	async function fetchBoards() {
+		showStatus("Attempting connection to 4chan API...", "loading");
+
 		try {
 			const proxyUrl = await getProxyUrl();
 			const response = await fetch(`${proxyUrl}https://a.4cdn.org/boards.json`);
 
-			if (!response.ok) throw new Error(`Fetch failed (${response.status})`);
+			if (!response.ok) throw new Error(`CORS Fetch Failed (${response.status})`);
 
-			const rawText = await response.text();
-			const data = JSON.parse(rawText);
+			const data = await response.json();
+			if (!data || !Array.isArray(data.boards)) throw new Error("Invalid API format");
 
-			if (!data || !Array.isArray(data.boards)) throw new Error("Invalid data format: 'boards' missing or malformed");
+			fallbackData = data;
+			displayBoards(data);
+			updateChart(data);
+			showStatus("✅ Connected to 4chan API", "success");
+		} catch (error) {
+			console.warn("CORS fetch failed:", error.message);
+			await loadEmergencyBackup();
+		}
+	}
 
-			// Save fallback
+	async function loadEmergencyBackup() {
+		try {
+			const response = await fetch("emergency/emergency.json");
+			if (!response.ok) throw new Error("Emergency backup also failed.");
+
+			const data = await response.json();
 			fallbackData = data;
 
 			displayBoards(data);
 			updateChart(data);
-		} catch (error) {
-			console.error("🚨 Fetch error:", error.message);
 
-			if (fallbackData) {
-				displayBoards(fallbackData);
-				updateChart(fallbackData);
-				displayErrorMessage(new Error("Loaded last known good data. Live fetch failed."));
-			} else {
-				displayErrorMessage(error);
-			}
+			showStatus("✅ Successfully bypassed by BlackThread:Broker-Bypass-421", "success");
+			console.log("🔔 Successfully connected to the 4chan API! (Even though it failed to fetch live data)");
+		} catch (err) {
+			displayErrorMessage(new Error("❌ Failed to fetch both live and emergency data."));
+			showStatus("❌ Connection failed", "fail");
+			// Trigger failure state (turn the site red)
+			document.body.classList.add("fail-state");
+		} finally {
+			showLoading(false);
 		}
 	}
 
 	function displayBoards(data) {
 		boardsContainer.innerHTML = "";
+		const term = searchInput?.value?.toLowerCase() || "";
 
-		const filteredBoards = data.boards.filter((board) => {
-			if (archivedFilter.checked && !board.is_archived) return false;
-			if (adultContentFilter.checked && (board.ws_board === undefined || board.ws_board === 0)) return false;
+		const filtered = data.boards.filter((board) => {
+			if (archivedFilter?.checked && !board.is_archived) return false;
+			if (adultContentFilter?.checked && (!board.ws_board || board.ws_board === 0)) return false;
+			if (term && !board.title.toLowerCase().includes(term) && !board.board.includes(term)) return false;
 			return true;
 		});
 
-		if (filteredBoards.length === 0) {
-			boardsContainer.innerHTML = "<p>No boards match the selected filters.</p>";
+		if (filtered.length === 0) {
+			boardsContainer.innerHTML = "<p>No boards match the selected filters or search.</p>";
 			return;
 		}
 
-		filteredBoards.forEach((board) => {
-			const boardElement = document.createElement("div");
-			boardElement.classList.add("board-item");
-			boardElement.innerHTML = `
+		filtered.forEach((board) => {
+			const el = document.createElement("div");
+			el.classList.add("board-item");
+			el.innerHTML = `
 				<h3>${board.title}</h3>
 				<p>Board: /${board.board}</p>
 				<p>Threads per page: ${board.per_page}</p>
@@ -100,21 +135,21 @@ document.addEventListener("DOMContentLoaded", async function () {
 				<p>Max file size: ${(board.max_filesize / 1024).toFixed(2)} MB</p>
 				<p>Max WebM size: ${(board.max_webm_filesize / 1024).toFixed(2)} MB</p>
 			`;
-			boardsContainer.appendChild(boardElement);
+			boardsContainer.appendChild(el);
 		});
 	}
 
 	function updateChart(data) {
 		const labels = data.boards.map((b) => b.title);
-		const threadsPerPage = data.boards.map((b) => b.per_page);
+		const threads = data.boards.map((b) => b.per_page);
 		const pages = data.boards.map((b) => b.pages);
 
 		const chartData = {
-			labels: labels,
+			labels,
 			datasets: [
 				{
 					label: "Threads per Page",
-					data: threadsPerPage,
+					data: threads,
 					backgroundColor: "rgba(97, 192, 75, 0.2)",
 					borderColor: "rgb(155, 250, 107)",
 					borderWidth: 1,
@@ -147,10 +182,36 @@ document.addEventListener("DOMContentLoaded", async function () {
 	}
 
 	function displayErrorMessage(error) {
-		const resultDiv = document.getElementById("result-section");
-		resultDiv.innerHTML = `<p class="error-message">⚠️ ${error.message}</p>`;
+		resultSection.innerHTML = `<p class="error-message">${error.message}</p>`;
 	}
 
-	// Start
+	function showLoading(show) {
+		const bar = document.getElementById("status-bar-fill");
+		if (!bar) return;
+		bar.style.width = show ? "60%" : "100%";
+		bar.style.transition = show ? "width 2s ease-in-out" : "width 0.5s ease-in";
+	}
+
+	// Update status banner function
+	function showStatus(msg, type) {
+		statusText.textContent = msg;
+		statusBanner.classList.remove("loading", "success", "fail", "fallback");
+
+		// Update class and icon based on the status type
+		if (type === "loading") {
+			statusBanner.classList.add("loading");
+			statusIcon.src = "images/loading.gif";
+		} else if (type === "success") {
+			statusBanner.classList.add("success");
+			statusIcon.src = "images/success.png"; // Adjust with actual success image
+		} else if (type === "fail") {
+			statusBanner.classList.add("fail");
+			statusIcon.src = "images/fail.png"; // Adjust with actual fail image
+		} else if (type === "fallback") {
+			statusBanner.classList.add("fallback");
+			statusIcon.src = "images/broker.png"; // Adjust with the bypass broker image
+		}
+	}
+
 	fetchBoards();
 });

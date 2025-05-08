@@ -37,6 +37,16 @@
 						<button id="toggle-theme">🌙 Dark Mode</button>
 					</div>
 				</div>
+				<!-- Status Banner -->
+				<div id="status-banner" class="status-banner loading">
+					<img id="status-icon" src="images/loading.gif" alt="Loading..." />
+					<span id="status-text">Attempting connection to 4chan API...</span>
+				</div>
+				<!-- Loading Bar -->
+				<div id="loading-bar-container" class="loading-bar-container hidden">
+					<div id="loading-bar" class="loading-bar"></div>
+					<span id="loading-text">Connecting...</span>
+				</div>
 			</div>
 		</header>
 
@@ -47,7 +57,7 @@
 				<div class="filters">
 					<label for="filter-archived">Show Archived: (currently experimental)</label>
 					<input type="checkbox" id="filter-archived" />
-					<label for="filter-adult-content">Filter Adult Content: (currently experimental)</label>
+					<label for="filter-adult-content">Filter Adult Content:</label>
 					<input type="checkbox" id="filter-adult-content" />
 				</div>
 			</div>

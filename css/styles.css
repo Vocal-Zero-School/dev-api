@@ -13,6 +13,53 @@ body {
 	line-height: 1.6;
 }
 
+/* Status Banner */
+.status-banner {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	background-color: #222;
+	color: #fff;
+	text-align: center;
+	padding: 8px;
+	font-family: monospace;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+}
+
+.status-banner img {
+	width: 20px;
+	height: 20px;
+}
+
+.status-banner.success {
+	background-color: #2d572c;
+}
+
+.status-banner.fail {
+	background-color: #782c2c;
+}
+
+.status-banner.fallback {
+	background-color: #5e4b2c;
+}
+
+/* Fail-State for Light Mode */
+body.fail-state {
+	background-color: #ff4d4d; /* Red background for fail state */
+	color: white; /* White text for contrast */
+}
+
+/* Fail-State for Dark Mode */
+body.dark-mode.fail-state {
+	background-color: #7d1414; /* Darker red for dark mode */
+	color: white; /* White text for contrast */
+}
+
 /* Dark Mode */
 body.dark-mode {
 	background-color: #121212;
@@ -160,6 +207,28 @@ footer p a:hover {
 	text-decoration: underline;
 }
 
+/* Loading Bar Container */
+#loading-bar-container {
+	display: none;
+	margin-top: 15px;
+	width: 100%;
+	text-align: center;
+}
+
+#loading-bar {
+	width: 0;
+	height: 5px;
+	background-color: #2d572c;
+	transition: width 1s ease-in-out;
+}
+
+#loading-text {
+	font-size: 16px;
+	color: #222;
+	margin-top: 5px;
+	font-weight: bold;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
 	body {
@@ -172,5 +241,10 @@ footer p a:hover {
 
 	.board-item {
 		padding: 8px;
+	}
+
+	/* Loading Bar and Status Text Scaling */
+	#loading-text {
+		font-size: 14px;
 	}
 }
