@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 	}
 
 	async function getProxyUrl() {
-		return "https://cors-anywhere.herokuapp.com/corsdemo/"; // Correct proxy URL
+		return "https://dev2-cors.onrender.com/"; // Updated proxy URL
 	}
 
 	async function fetchBoards() {
