@@ -1,0 +1,1 @@
+to make sure it works if it doesn't check that https://dev2-cors.onrender.com/ is up (yes i swapped it to your cors render teacher, it just works better and is less effort for me or you to make it work)
