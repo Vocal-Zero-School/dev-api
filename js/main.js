@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", async function () {
 	const boardsContainer = document.getElementById("boards-list");
-	const archivedFilter = document.getElementById("filter-archived");
 	const adultContentFilter = document.getElementById("filter-adult-content");
 	const themeToggleButton = document.getElementById("toggle-theme");
 	const logo = document.getElementById("site-logo");
@@ -44,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 	}
 
 	// Filter change
-	[archivedFilter, adultContentFilter].forEach((filter) => {
+	[adultContentFilter].forEach((filter) => {
 		if (filter) {
 			filter.addEventListener("change", () => {
 				if (fallbackData) displayBoards(fallbackData);
@@ -113,7 +112,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 		const term = searchInput?.value?.toLowerCase() || "";
 
 		const filtered = data.boards.filter((board) => {
-			if (archivedFilter?.checked && !board.is_archived) return false;
 			if (adultContentFilter?.checked && (!board.ws_board || board.ws_board === 0)) return false;
 			if (term && !board.title.toLowerCase().includes(term) && !board.board.includes(term)) return false;
 			return true;
